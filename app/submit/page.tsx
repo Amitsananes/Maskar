@@ -1,15 +1,22 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Input, Label } from "@/components/ui";
-
-type MachineResult = { id: string; name: string };
+import { useSession } from "next-auth/react";
+import { useState } from "react";
+import {
+  CheckCircle2,
+  Circle,
+  ClipboardCheck,
+  Lightbulb,
+  Loader2,
+  Send,
+} from "lucide-react";
+import { AgentShell } from "@/components/app-shell";
+import { ImageUploadZone } from "@/components/image-upload-zone";
+import { MachineSearch, type MachineResult } from "@/components/machine-search";
+import { Alert, Badge, Button, Card, SectionHeader } from "@/components/ui";
 
 export default function SubmitPage() {
   const { data: session } = useSession();
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<MachineResult[]>([]);
   const [selected, setSelected] = useState<MachineResult | null>(null);
   const [front, setFront] = useState<File | null>(null);
   const [panel, setPanel] = useState<File | null>(null);
@@ -18,20 +25,13 @@ export default function SubmitPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const search = useCallback(async (q: string) => {
-    if (q.length < 1) {
-      setResults([]);
-      return;
-    }
-    const res = await fetch(`/api/machines/search?q=${encodeURIComponent(q)}`);
-    const data = await res.json();
-    setResults(data.results ?? []);
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => search(query), 250);
-    return () => clearTimeout(t);
-  }, [query, search]);
+  const stepMachine = !!selected;
+  const stepPhotos = !!front && !!panel;
+  const steps = [
+    { label: "מכונה", done: stepMachine },
+    { label: "תמונות", done: stepPhotos },
+    { label: "שליחה", done: false },
+  ];
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,100 +62,152 @@ export default function SubmitPage() {
       return;
     }
 
-    setMessage(data.message ?? "הביקור התקבל");
+    setMessage(data.message ?? "הביקור התקבל ונשלח לניתוח");
     setSelected(null);
-    setQuery("");
     setFront(null);
     setPanel(null);
     setSide(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   return (
-    <main className="mx-auto max-w-lg p-4 pb-24">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">הגשת ביקור</h1>
-          <p className="text-sm text-slate-600">{session?.user?.name}</p>
+    <AgentShell userName={session?.user?.name}>
+      <div className="px-4 pb-28 pt-4">
+        <div className="mb-6">
+          <Badge variant="brand" className="mb-2">
+            ביקור חדש
+          </Badge>
+          <h1 className="text-2xl font-bold text-slate-900">בדיקת שטח</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            צלמו את המכונה, שלחו לניתוח — המשרד יקבל משימות לאחר עיבוד AI
+          </p>
         </div>
-        <Button variant="ghost" onClick={() => signOut({ callbackUrl: "/login" })}>
-          יציאה
-        </Button>
-      </header>
 
-      <form onSubmit={onSubmit} className="space-y-4">
-        <Card>
-          <Label>חיפוש מכונה</Label>
-          <Input
-            placeholder="מזהה או שם מיקום"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelected(null);
-            }}
-          />
-          {results.length > 0 && !selected && (
-            <ul className="mt-2 max-h-40 overflow-auto rounded-lg border">
-              {results.map((m) => (
-                <li key={m.id}>
-                  <button
-                    type="button"
-                    className="w-full px-3 py-2 text-right text-sm hover:bg-slate-100"
-                    onClick={() => {
-                      setSelected(m);
-                      setQuery(`${m.id} — ${m.name}`);
-                      setResults([]);
-                    }}
-                  >
-                    <span className="font-medium">{m.id}</span>
-                    <span className="text-slate-600"> — {m.name}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {selected && (
-            <p className="mt-2 text-sm text-green-700">נבחר: {selected.id}</p>
-          )}
-        </Card>
+        <div className="mb-6 flex items-center justify-between gap-2 rounded-2xl bg-white p-3 shadow-soft ring-1 ring-slate-200/60">
+          {steps.map((s, i) => (
+            <div key={s.label} className="flex flex-1 flex-col items-center gap-1">
+              {s.done ? (
+                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+              ) : (
+                <Circle className="h-6 w-6 text-slate-300" />
+              )}
+              <span
+                className={`text-[10px] font-medium ${s.done ? "text-emerald-700" : "text-slate-400"}`}
+              >
+                {s.label}
+              </span>
+              {i < steps.length - 1 && (
+                <span className="absolute hidden" aria-hidden />
+              )}
+            </div>
+          ))}
+        </div>
 
-        <Card>
-          <Label>תמונת חזית (חובה)</Label>
-          <Input
-            type="file"
-            accept="image/jpeg,image/webp,image/png"
-            capture="environment"
-            onChange={(e) => setFront(e.target.files?.[0] ?? null)}
-          />
-        </Card>
+        {message && (
+          <Alert variant="success" className="mb-4">
+            {message}
+          </Alert>
+        )}
+        {error && (
+          <Alert variant="error" className="mb-4">
+            {error}
+          </Alert>
+        )}
 
-        <Card>
-          <Label>תמונת פאנל (חובה)</Label>
-          <Input
-            type="file"
-            accept="image/jpeg,image/webp,image/png"
-            capture="environment"
-            onChange={(e) => setPanel(e.target.files?.[0] ?? null)}
-          />
-        </Card>
+        <form onSubmit={onSubmit} className="space-y-5">
+          <Card>
+            <SectionHeader
+              title="בחירת מכונה"
+              subtitle="חפשו לפי מזהה או שם מיקום"
+            />
+            <MachineSearch selected={selected} onSelect={setSelected} />
+          </Card>
 
-        <Card>
-          <Label>תמונת צד (אופציונלי)</Label>
-          <p className="mb-2 text-xs text-slate-500">יש בעיה בצד? הוסף תמונה</p>
-          <Input
-            type="file"
-            accept="image/jpeg,image/webp,image/png"
-            capture="environment"
-            onChange={(e) => setSide(e.target.files?.[0] ?? null)}
-          />
-        </Card>
+          <Card>
+            <SectionHeader
+              title="תיעוד ויזואלי"
+              subtitle="לפחות חזית ופאנל · צד אופציונלי"
+            />
+            <div className="space-y-5">
+              <ImageUploadZone
+                title="חזית המכונה"
+                instruction="צלמו את החזית המלאה — גרפיקה, מסך ומצב כללי"
+                required
+                value={front}
+                onChange={setFront}
+                disabled={loading}
+              />
+              <ImageUploadZone
+                title="פאנל בחירה"
+                instruction="תמונה ברורה של לוח הבחירה והמחירים"
+                required
+                value={panel}
+                onChange={setPanel}
+                disabled={loading}
+              />
+              <ImageUploadZone
+                title="צד / תוספת"
+                instruction="רק אם יש ליקוי בצד או רוצים להדגיש פרט"
+                value={side}
+                onChange={setSide}
+                disabled={loading}
+              />
+            </div>
+          </Card>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {message && <p className="text-sm text-green-700">{message}</p>}
+          <Card className="border-brand-100 bg-brand-50/40">
+            <div className="flex gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                <Lightbulb className="h-5 w-5 text-brand-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">טיפים לצילום</p>
+                <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                  <li>· תאורה טובה — הימנעו מצללים חזקים על הפאנל</li>
+                  <li>· החזיקו את המכשיר יציב, במיוחד לתמונת הפאנל</li>
+                  <li>· לאחר שליחה: סטטוס «ממתין ל-AI» יופיע במשרד</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
 
-        <Button type="submit" className="w-full py-3 text-base" disabled={loading}>
-          {loading ? "שולח..." : "הגש ביקור"}
-        </Button>
-      </form>
-    </main>
+          <Card className="border-dashed opacity-80">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-600">טיוטות וביקורים אחרונים</p>
+                <p className="text-xs text-slate-400">שמירת טיוטה — בקרוב</p>
+              </div>
+              <Badge variant="muted">בקרוב</Badge>
+            </div>
+          </Card>
+
+          <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200/80 bg-white/95 p-4 backdrop-blur-md sm:static sm:border-0 sm:bg-transparent sm:p-0">
+            <Button
+              type="submit"
+              className="w-full shadow-card"
+              size="lg"
+              disabled={loading || !stepMachine || !stepPhotos}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  שולח ביקור...
+                </>
+              ) : (
+                <>
+                  <Send className="h-5 w-5" />
+                  שלח ביקור לעיבוד
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+
+        <div className="mt-6 flex items-center gap-2 text-xs text-slate-400">
+          <ClipboardCheck className="h-4 w-4" />
+          <span>העלאה מאובטחת · עד 10MB לתמונה</span>
+        </div>
+      </div>
+    </AgentShell>
   );
 }

@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Input, Label } from "@/components/ui";
+import { useSession } from "next-auth/react";
+import { OfficeShell } from "@/components/app-shell";
+import { VisitStatusBadge } from "@/components/status-badge";
+import { Button, Card, Input, Label, SectionHeader } from "@/components/ui";
 
 type Task = {
   id: string;
@@ -25,6 +28,7 @@ type VisitDetail = {
 };
 
 export default function VisitApprovalPage() {
+  const { data: session } = useSession();
   const params = useParams();
   const id = params.id as string;
   const [visit, setVisit] = useState<VisitDetail | null>(null);
@@ -66,23 +70,36 @@ export default function VisitApprovalPage() {
     load();
   }
 
-  if (loading) return <main className="p-6">טוען...</main>;
-  if (!visit) return <main className="p-6">ביקור לא נמצא</main>;
+  if (loading) {
+    return (
+      <OfficeShell userName={session?.user?.name} activePath="/office">
+        <p className="text-slate-500">טוען...</p>
+      </OfficeShell>
+    );
+  }
+  if (!visit) {
+    return (
+      <OfficeShell userName={session?.user?.name} activePath="/office">
+        <p className="text-slate-500">ביקור לא נמצא</p>
+      </OfficeShell>
+    );
+  }
 
   const pending = visit.tasks.filter((t) => t.status === "PENDING_APPROVAL");
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
-      <div className="mb-4">
-        <Link href="/office" className="text-sm text-blue-600 hover:underline">
-          ← חזרה לתיבה
-        </Link>
-      </div>
+    <OfficeShell userName={session?.user?.name} activePath="/office">
+      <div className="mx-auto max-w-5xl">
+      <Link href="/office" className="mb-4 inline-block text-sm font-medium text-brand-600 hover:text-brand-700">
+        ← חזרה ללוח בקרה
+      </Link>
 
-      <h1 className="mb-2 text-2xl font-bold">
-        {visit.machineId} — {visit.machine?.name}
-      </h1>
-      <p className="mb-6 text-sm text-slate-600">סטטוס: {visit.status}</p>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-bold text-slate-900">
+          {visit.machineId} — {visit.machine?.name}
+        </h1>
+        <VisitStatusBadge status={visit.status} />
+      </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visit.images.map((img) => (
@@ -104,7 +121,7 @@ export default function VisitApprovalPage() {
         )}
       </Card>
 
-      <h2 className="mb-3 text-lg font-semibold">משימות שזוהו</h2>
+      <SectionHeader title="משימות שזוהו" />
 
       {visit.tasks.length === 0 && (
         <Card>
@@ -148,6 +165,7 @@ export default function VisitApprovalPage() {
           </li>
         ))}
       </ul>
-    </main>
+      </div>
+    </OfficeShell>
   );
 }
