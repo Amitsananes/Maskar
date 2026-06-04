@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { imageUrlToVisionBlock } from "../lib/image-for-vision";
 
 const SYSTEM_PROMPT = `You are a vending machine field inspection AI.
 You receive 2–3 photos of a vending machine.
@@ -73,11 +74,11 @@ export async function analyzeVisit(
   machineId: string
 ): Promise<AIOutput> {
   const content: Anthropic.Messages.ContentBlockParam[] = [
-    { type: "image", source: { type: "url", url: images.front } },
-    { type: "image", source: { type: "url", url: images.panel } },
+    await imageUrlToVisionBlock(images.front),
+    await imageUrlToVisionBlock(images.panel),
   ];
   if (images.side) {
-    content.push({ type: "image", source: { type: "url", url: images.side } });
+    content.push(await imageUrlToVisionBlock(images.side));
   }
   content.push({
     type: "text",

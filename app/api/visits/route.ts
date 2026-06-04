@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/api-auth";
-import { uploadVisitImage } from "@/lib/cloudinary";
+import { uploadVisitImage } from "@/lib/storage";
 import { enqueueVisitProcessing } from "@/lib/queue";
 import { hasDuplicateVisitToday } from "@/lib/visits";
 import { logAudit } from "@/lib/audit";
@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
       const { url, publicId } = await uploadVisitImage(
         buffer,
         `visits/${visit.id}`,
-        `${visit.id}_${angle.toLowerCase()}`
+        `${visit.id}_${angle.toLowerCase()}`,
+        file.type || "image/jpeg"
       );
       await prisma.image.create({
         data: {

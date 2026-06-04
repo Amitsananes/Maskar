@@ -37,3 +37,6 @@ next-env.d.ts
 
 /app/generated/prisma
 .env
+
+# Local upload fallback
+/public/uploads/

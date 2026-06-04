@@ -11,6 +11,13 @@ AI-powered vending machine inspection (MVP v3).
 - NextAuth (credentials)
 - Railway deployment
 
+
+## Local storage fallback (dev / testing)
+
+If `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, or `CLOUDINARY_API_SECRET` are unset, uploads are saved under `public/uploads/` and served at `/uploads/...`. Visit creation and BullMQ processing continue as normal.
+
+The vision worker reads local files as base64 (no need for Cloudinary). Set `APP_URL` or `NEXTAUTH_URL` so stored image URLs resolve correctly (default `http://localhost:3000`).
+
 ## Local setup
 
 ```bash
