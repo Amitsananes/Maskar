@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-50: #eef4ff;
+  --brand-100: #d9e6ff;
+  --brand-500: #3b6fd9;
+  --brand-600: #2f5bb8;
+  --brand-700: #264a96;
+  --surface: #f6f8fb;
+  --surface-elevated: #ffffff;
+  --border: #e2e8f0;
+  --text-muted: #64748b;
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.06);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: #0f172a;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .fv-gradient-bg {
+    background:
+      radial-gradient(ellipse 80% 50% at 100% 0%, rgba(59, 111, 217, 0.12), transparent),
+      radial-gradient(ellipse 60% 40% at 0% 100%, rgba(59, 111, 217, 0.08), transparent),
+      var(--surface);
+  }
+}

@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── MACHINES ────────────────────────────────────────────────────
+model Machine {
+  id        String   @id
+  name      String?
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  visits    Visit[]
+  tasks     WorkTask[]
+}
+
+// ── USERS ───────────────────────────────────────────────────────
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  role         Role       @default(AGENT)
+  createdAt    DateTime   @default(now())
+  visits       Visit[]
+  auditLogs    AuditLog[]
+}
+
+enum Role {
+  AGENT
+  OFFICE
+  ADMIN
+}
+
+// ── RESOLUTION TEMPLATES ────────────────────────────────────────
+model ResolutionTemplate {
+  id           String                 @id
+  name         String
+  team         TeamType
+  instructions String?
+  isActive     Boolean                @default(true)
+  createdAt    DateTime               @default(now())
+  mappings     IssueTemplateMapping[]
+  tasks        WorkTask[]
+}
+
+enum TeamType {
+  BRANDING
+  MAINTENANCE
+  CLEANING
+  TECHNICIAN
+  GENERAL
+}
+
+// ── ISSUE → TEMPLATE MAPPING ────────────────────────────────────
+model IssueTemplateMapping {
+  id         String             @id @default(cuid())
+  issueType  IssueType
+  location   String?
+  template   ResolutionTemplate @relation(fields: [templateId], references: [id])
+  templateId String
+
+  @@unique([issueType, location])
+}
+
+// ── ISSUE TYPES (AI detection layer) ────────────────────────────
+enum IssueType {
+  DAMAGED_BRANDING
+  RUST
+  DAMAGED_PANEL
+  MISSING_PRICE_LABEL
+  MISSING_PRODUCT_LABEL
+  DIRTY
+  BROKEN_GLASS
+  SCREEN_OFF
+  DOOR_OPEN
+  VANDALISM
+  GENERAL_ISSUE
+}
+
+// ── VISITS ──────────────────────────────────────────────────────
+model Visit {
+  id          String      @id @default(cuid())
+  machineId   String
+  machine     Machine     @relation(fields: [machineId], references: [id])
+  agentId     String
+  agent       User        @relation(fields: [agentId], references: [id])
+  status      VisitStatus @default(PENDING)
+  images      Image[]
+  tasks       WorkTask[]
+  aiRawOutput Json?
+  createdAt   DateTime    @default(now())
+  processedAt DateTime?
+}
+
+enum VisitStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+// ── IMAGES ──────────────────────────────────────────────────────
+model Image {
+  id           String     @id @default(cuid())
+  visitId      String
+  visit        Visit      @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  angle        ImageAngle
+  url          String
+  cloudinaryId String
+  createdAt    DateTime   @default(now())
+}
+
+enum ImageAngle {
+  FRONT
+  PANEL
+  SIDE
+}
+
+// ── WORK TASKS ──────────────────────────────────────────────────
+model WorkTask {
+  id             String             @id @default(cuid())
+  machineId      String
+  machine        Machine            @relation(fields: [machineId], references: [id])
+  visitId        String
+  visit          Visit              @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  issueType      IssueType
+  location       String?
+  templateId     String
+  template       ResolutionTemplate @relation(fields: [templateId], references: [id])
+  priority       Priority
+  reason         String
+  status         TaskStatus         @default(PENDING_APPROVAL)
+  officeNote     String?
+  decidedAt      DateTime?
+  completedAt    DateTime?
+  completionNote String?
+  createdAt      DateTime           @default(now())
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  DONE
+}
+
+// ── AUDIT ───────────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
